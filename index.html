@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GasAgua Pro - Sistema de Gestão</title>
+    
+    <!-- Manifesto PWA -->
+    <link rel="manifest" href="./manifest.json">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" crossorigin href="./index-BCooEiNa.css">
+    
+    <!-- Registrar Service Worker -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('./sw.js')
+            .then(function(registration) {
+              console.log('Service Worker registrado:', registration.scope);
+            })
+            .catch(function(error) {
+              console.log('Erro ao registrar Service Worker:', error);
+            });
+        });
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    
+    <!-- Script de verificação de conexão -->
+    <script src="./conexao.js"></script>
+    
+    <!-- Script principal da aplicação -->
+    <script type="module" crossorigin src="./index-B_0g4mRk.js"></script>
+  </body>
+</html>
