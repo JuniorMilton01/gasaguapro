@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gasagua-v1';
+const CACHE_NAME = 'gasagua-v2'; // Incrementado para forçar atualização
 const urlsToCache = [
   './',
   './index.html',
@@ -6,6 +6,8 @@ const urlsToCache = [
   './index-B_0g4mRk.js',
   './manifest.json',
   './conexao.js',
+  './storage.js',
+  './firebase-config.js',
   './icone-192.png',
   './icone-512.png'
 ];
@@ -33,6 +35,12 @@ self.addEventListener('fetch', function(event) {
     return;
   }
   
+  // Não intercepta requisições do Firebase
+  if (event.request.url.includes('firebaseio.com') || 
+      event.request.url.includes('googleapis.com')) {
+    return;
+  }
+  
   event.respondWith(
     caches.match(event.request)
       .then(function(response) {
@@ -51,30 +59,4 @@ self.addEventListener('fetch', function(event) {
             caches.open(CACHE_NAME).then(function(cache) {
               cache.put(event.request, responseToCache);
             });
-            return networkResponse;
-          });
-      })
-      .catch(function() {
-        // Se falhou completamente, retorna página offline
-        console.log('Falha ao carregar:', event.request.url);
-      })
-  );
-});
-
-// Ativação - limpa caches antigos
-self.addEventListener('activate', function(event) {
-  event.waitUntil(
-    caches.keys().then(function(cacheNames) {
-      return Promise.all(
-        cacheNames.map(function(cacheName) {
-          if (cacheName !== CACHE_NAME) {
-            console.log('Deletando cache antigo:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
-  );
-  // Toma controle de todas as abas imediatamente
-  self.clients.claim();
-});
+            return
