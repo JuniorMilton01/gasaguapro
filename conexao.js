@@ -26,8 +26,11 @@ function sincronizarDados() {
   setInterval(function() {
     if (navigator.onLine) {
       console.log("Verificando atualizações...");
-      // TODO: Implementar sincronização real quando tiver backend
-      // fetch('/api/sync').then(...).catch(...)
+      // Sincroniza dados pendentes
+      const dados = carregarDados();
+      if (dados && typeof window.salvarNaNuvem === 'function') {
+        window.salvarNaNuvem(dados);
+      }
     }
   }, 10000);
 }
@@ -35,7 +38,14 @@ function sincronizarDados() {
 // Escuta mudanças de conexão
 window.addEventListener('online', function() {
   console.log("Conexão restaurada!");
+  document.body.classList.remove('offline-mode');
+  document.body.style.filter = "none";
   verificarConexao();
+  
+  // Força sincronização imediata ao voltar online
+  if (typeof window.salvarAgora === 'function') {
+    window.salvarAgora();
+  }
 });
 
 window.addEventListener('offline', function() {
@@ -45,3 +55,7 @@ window.addEventListener('offline', function() {
 
 // Verifica ao carregar a página
 document.addEventListener('DOMContentLoaded', verificarConexao);
+
+// Exporta funções globais
+window.verificarConexao = verificarConexao;
+window.sincronizarDados = sincronizarDados;
