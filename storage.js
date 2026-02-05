@@ -27,12 +27,12 @@ function login() {
   };
 
   salvarDados(dados);
-  atualizarTela();
+  console.log("Usuário logado:", dados.usuario);
 }
 
 function logout() {
   localStorage.removeItem(APP_KEY);
-  atualizarTela();
+  console.log("Usuário deslogado");
 }
 
 // ================================
@@ -56,24 +56,8 @@ function salvarVenda() {
   dados.vendas.push(venda);
   salvarDados(dados);
 
+  console.log("Venda salva:", venda);
   alert("Venda salva com sucesso!");
 }
 
-// ================================
-// INTERFACE
-// ================================
-function atualizarTela() {
-  const status = document.getElementById("status");
-  const dados = carregarDados();
-
-  if (dados && dados.logado) {
-    status.innerText = `Logado como ${dados.usuario} | Vendas: ${dados.vendas.length}`;
-  } else {
-    status.innerText = "Não logado";
-  }
-}
-
-// ================================
-// AUTO LOAD AO ABRIR O APP
-// ================================
-document.addEventListener("DOMContentLoaded", atualizarTela);
+console.log('💾 Storage.js carregado - Funções: salvarDados, carregarDados, login, logout, salvarVenda');
