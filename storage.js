@@ -33,6 +33,9 @@ function carregarLocal() {
 // ==========================================
 
 function salvarDados(dados) {
+  // Adiciona timestamp de atualização
+  dados.ultimaAtualizacao = new Date().toISOString();
+  
   // 1. Salva localmente (sempre)
   salvarLocal(dados);
   console.log("💾 Dados salvos localmente");
@@ -162,6 +165,87 @@ window.addEventListener('online', () => {
 });
 
 // ==========================================
+// AUTO-SAVE GLOBAL (NOVO - ESSENCIAL!)
+// ==========================================
+
+// Variáveis para controle do auto-save
+let ultimosDadosSalvos = null;
+let autoSaveAtivo = false;
+
+// Função para ativar o auto-save (chamar no início da aplicação)
+function ativarAutoSave(funcaoObterDados, intervaloMs = 3000) {
+  if (autoSaveAtivo) {
+    console.log("⏱️ Auto-save já está ativo");
+    return;
+  }
+  
+  // Guarda referência global para acessar de qualquer lugar
+  window.obterDadosSistema = funcaoObterDados;
+  autoSaveAtivo = true;
+  
+  console.log("⏱️ Auto-save ativado! (a cada " + intervaloMs + "ms)");
+  
+  // Auto-save periódico
+  const intervalo = setInterval(() => {
+    if (typeof window.obterDadosSistema === 'function') {
+      const dadosAtuais = window.obterDadosSistema();
+      
+      if (dadosAtuais) {
+        // Só salva se os dados mudaram
+        const dadosString = JSON.stringify(dadosAtuais);
+        if (dadosString !== ultimosDadosSalvos) {
+          salvarDados(dadosAtuais);
+          ultimosDadosSalvos = dadosString;
+        }
+      }
+    }
+  }, intervaloMs);
+  
+  // Salvar ao sair da página (beforeunload)
+  window.addEventListener('beforeunload', () => {
+    if (typeof window.obterDadosSistema === 'function') {
+      const dadosAtuais = window.obterDadosSistema();
+      if (dadosAtuais) {
+        salvarDados(dadosAtuais);
+      }
+    }
+  });
+  
+  // Salvar quando a aba perde foco (visibilitychange)
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && typeof window.obterDadosSistema === 'function') {
+      const dadosAtuais = window.obterDadosSistema();
+      if (dadosAtuais) {
+        salvarDados(dadosAtuais);
+        ultimosDadosSalvos = JSON.stringify(dadosAtuais);
+      }
+    }
+  });
+  
+  // Retorna função para desativar se necessário
+  return () => {
+    clearInterval(intervalo);
+    autoSaveAtivo = false;
+    console.log("⏹️ Auto-save desativado");
+  };
+}
+
+// Função para forçar salvamento imediato
+function salvarAgora() {
+  if (typeof window.obterDadosSistema === 'function') {
+    const dadosAtuais = window.obterDadosSistema();
+    if (dadosAtuais) {
+      salvarDados(dadosAtuais);
+      ultimosDadosSalvos = JSON.stringify(dadosAtuais);
+      console.log("💾 Salvamento forçado!");
+      return true;
+    }
+  }
+  console.warn("⚠️ Não foi possível salvar - função obterDadosSistema não definida");
+  return false;
+}
+
+// ==========================================
 // USUÁRIOS
 // ==========================================
 
@@ -252,4 +336,52 @@ function salvarCliente(cliente) {
   return novoCliente;
 }
 
-console.log("💾 Storage carregado - Local + Firebase ativos");
+// ==========================================
+// ESTOQUE
+// ==========================================
+
+function salvarProdutoEstoque(produto) {
+  const dados = carregarDados();
+  if (!dados.estoque) dados.estoque = [];
+  
+  const produtoExistente = dados.estoque.find(p => p.id === produto.id);
+  
+  if (produtoExistente) {
+    // Atualiza produto existente
+    Object.assign(produtoExistente, produto);
+    produtoExistente.dataAtualizacao = new Date().toISOString();
+    console.log("📦 Produto atualizado:", produto.nome);
+  } else {
+    // Novo produto
+    const novoProduto = {
+      id: produto.id || Date.now(),
+      nome: produto.nome,
+      quantidade: produto.quantidade,
+      preco: produto.preco,
+      tipo: produto.tipo, // 'gas' ou 'agua'
+      dataCadastro: new Date().toISOString()
+    };
+    dados.estoque.push(novoProduto);
+    console.log("📦 Novo produto adicionado:", novoProduto.nome);
+  }
+  
+  salvarDados(dados);
+  return produto;
+}
+
+// ==========================================
+// EXPORTAR FUNÇÕES GLOBAIS
+// ==========================================
+
+window.salvarDados = salvarDados;
+window.carregarDados = carregarDados;
+window.ativarAutoSave = ativarAutoSave;
+window.salvarAgora = salvarAgora;
+window.salvarUsuario = salvarUsuario;
+window.login = login;
+window.logout = logout;
+window.salvarVenda = salvarVenda;
+window.salvarCliente = salvarCliente;
+window.salvarProdutoEstoque = salvarProdutoEstoque;
+
+console.log("💾 Storage carregado - Local + Firebase + Auto-Save ativos");
