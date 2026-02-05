@@ -26,7 +26,6 @@ try {
 window.salvarNaNuvem = function(dados) {
   if (!dbRef) return Promise.reject("Offline");
   
-  // Adiciona timestamp
   dados.ultimaAtualizacao = new Date().toISOString();
   
   return dbRef.set(dados)
