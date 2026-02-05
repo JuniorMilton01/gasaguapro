@@ -33,7 +33,7 @@ function lerDados(caminho, callback) {
   });
 }
 
-// Detectar status da conexão (online/offline)
+// Detecta status da conexão (online/offline)
 database.ref('.info/connected').on('value', (snap) => {
   if (snap.val() === true) {
     console.log('🟢 ONLINE - Sincronizando com servidor');
