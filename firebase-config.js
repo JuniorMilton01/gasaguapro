@@ -1,93 +1,67 @@
 // ==========================================
-// FIREBASE CONNECTION - GasAgua Pro
+// FIREBASE CONFIG - GasAgua Pro
 // ==========================================
 
-// Configuração
 const firebaseConfig = {
   databaseURL: "https://gasagua-pro-default-rtdb.firebaseio.com/"
 };
 
 // Inicializa Firebase
-let app, database, dbRef;
+let database, dbRef;
 
 try {
-  app = firebase.initializeApp(firebaseConfig);
+  firebase.initializeApp(firebaseConfig);
   database = firebase.database();
   dbRef = database.ref('sistema');
-  console.log("🔥 Firebase inicializado com sucesso!");
+  console.log("🔥 Firebase conectado com sucesso!");
 } catch (e) {
-  console.error("❌ Erro ao inicializar Firebase:", e);
+  console.error("❌ Erro ao conectar Firebase:", e);
 }
 
 // ==========================================
-// FUNÇÕES GLOBAIS (Disponíveis para todo o sistema)
+// FUNÇÕES GLOBAIS (disponíveis para todo o sistema)
 // ==========================================
 
-// Salvar dados no Firebase
-window.salvarNaNuvem = function(caminho, dados) {
+// Salvar dados na nuvem
+window.salvarNaNuvem = function(dados) {
   if (!dbRef) {
     console.error("Firebase não disponível");
-    return Promise.reject("Firebase offline");
+    return Promise.resolve(false);
   }
   
-  return dbRef.child(caminho).set(dados)
+  // Adiciona timestamp
+  dados.ultimaAtualizacao = new Date().toISOString();
+  dados.versao = "1.0";
+  
+  return dbRef.set(dados)
     .then(() => {
-      console.log("✅ Salvo na nuvem:", caminho);
+      console.log("✅ Dados salvos na nuvem!");
       return true;
     })
     .catch(erro => {
-      console.error("❌ Erro ao salvar:", erro);
+      console.error("❌ Erro ao salvar na nuvem:", erro);
       return false;
     });
 };
 
-// Ler dados do Firebase
-window.lerDaNuvem = function(caminho, callback) {
+// Carregar dados da nuvem
+window.carregarDaNuvem = function(callback) {
   if (!dbRef) {
     console.error("Firebase não disponível");
-    return;
-  }
-  
-  dbRef.child(caminho).on('value', (snapshot) => {
-    const dados = snapshot.val();
-    console.log("📥 Dados recebidos:", caminho, dados);
-    if (callback) callback(dados);
-  });
-};
-
-// Salvar TUDO (sistema completo)
-window.salvarSistemaCompleto = function(dados) {
-  if (!dbRef) return Promise.reject("Firebase offline");
-  
-  const dadosComTimestamp = {
-    ...dados,
-    ultimaAtualizacao: new Date().toISOString(),
-    versao: "1.0"
-  };
-  
-  return dbRef.set(dadosComTimestamp)
-    .then(() => {
-      console.log("✅ Sistema completo sincronizado!");
-      return true;
-    })
-    .catch(erro => {
-      console.error("❌ Erro na sincronização:", erro);
-      return false;
-    });
-};
-
-// Carregar TUDO
-window.carregarSistemaCompleto = function(callback) {
-  if (!dbRef) {
-    console.error("Firebase não disponível");
+    if (callback) callback(null);
     return;
   }
   
   dbRef.once('value')
     .then((snapshot) => {
       const dados = snapshot.val();
-      console.log("☁️ Sistema carregado da nuvem:", dados);
-      if (callback) callback(dados);
+      if (dados) {
+        console.log("☁️ Dados carregados da nuvem");
+        if (callback) callback(dados);
+      } else {
+        console.log("ℹ️ Nenhum dado encontrado na nuvem");
+        if (callback) callback(null);
+      }
     })
     .catch((erro) => {
       console.error("❌ Erro ao carregar:", erro);
@@ -95,12 +69,12 @@ window.carregarSistemaCompleto = function(callback) {
     });
 };
 
-// Status da conexão
+// Verificar status da conexão
 database.ref('.info/connected').on('value', (snap) => {
-  const status = snap.val() ? "ONLINE" : "OFFLINE";
-  console.log(`🌐 Firebase: ${status}`);
-  window.firebaseStatus = status;
+  const conectado = snap.val();
+  window.firebaseOnline = conectado;
+  console.log(conectado ? "🟢 Firebase Online" : "🔴 Firebase Offline");
 });
 
-console.log("✅ Firebase Connection carregado!");
-console.log("Funções disponíveis: salvarNaNuvem(), lerDaNuvem(), salvarSistemaCompleto(), carregarSistemaCompleto()");
+console.log("✅ Firebase Config carregado!");
+console.log("Funções disponíveis: salvarNaNuvem(), carregarDaNuvem()");
