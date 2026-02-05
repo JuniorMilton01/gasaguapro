@@ -7,77 +7,37 @@
     
     <!-- PWA -->
     <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./icone-192.png">
     <meta name="theme-color" content="#2563eb">
     
     <!-- CSS -->
     <link rel="stylesheet" crossorigin href="./index-BCooEiNa.css">
     
-    <!-- Firebase SDK -->
+    <!-- Firebase SDK (carrega primeiro) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     
-    <!-- Conexão Firebase -->
+    <!-- Firebase Config (carrega depois do SDK) -->
     <script src="./firebase-config.js"></script>
     
     <!-- Service Worker -->
     <script>
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js')
-          .then(reg => console.log('SW registrado'))
-          .catch(err => console.log('SW erro:', err));
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('✅ Service Worker registrado'))
+            .catch(err => console.log('❌ SW erro:', err));
+        });
       }
     </script>
   </head>
+  
   <body>
     <div id="root"></div>
     
-    <!-- Scripts do sistema -->
+    <!-- Scripts do sistema (na ordem correta) -->
     <script src="./conexao.js"></script>
     <script src="./storage.js"></script>
     <script type="module" crossorigin src="./index-B_0g4mRk.js"></script>
-    
-    <!-- Script de integração -->
-    <script>
-      // ==========================================
-      // INTEGRAÇÃO: LocalStorage ↔ Firebase
-      // ==========================================
-      
-      // Aguarda carregar
-      window.addEventListener('load', () => {
-        setTimeout(() => {
-          console.log("🔄 Iniciando integração LocalStorage ↔ Firebase...");
-          
-          // Sincroniza a cada 10 segundos
-          setInterval(sincronizarTudo, 10000);
-          
-          // Sincroniza imediatamente
-          sincronizarTudo();
-        }, 3000);
-      });
-      
-      function sincronizarTudo() {
-        try {
-          // Pega dados do LocalStorage
-          const dadosLocais = localStorage.getItem('gasaguapro');
-          
-          if (dadosLocais && window.salvarSistemaCompleto) {
-            const dados = JSON.parse(dadosLocais);
-            
-            // Só sincroniza se tiver dados significativos
-            if (dados && (dados.vendas?.length > 0 || dados.clientes?.length > 0 || dados.logado)) {
-              window.salvarSistemaCompleto(dados);
-            }
-          }
-        } catch (e) {
-          console.error("Erro na sincronização:", e);
-        }
-      }
-      
-      // Quando voltar online, força sincronização
-      window.addEventListener('online', () => {
-        console.log("🌐 Voltou online! Sincronizando...");
-        setTimeout(sincronizarTudo, 1000);
-      });
-    </script>
   </body>
 </html>
