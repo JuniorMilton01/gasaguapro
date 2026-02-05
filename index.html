@@ -3,46 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GasAgua Pro - Sistema de Gestão</title>
+    <title>GasAgua Pro</title>
     
-    <!-- Manifesto PWA -->
     <link rel="manifest" href="./manifest.json">
-    
-    <!-- CSS -->
     <link rel="stylesheet" crossorigin href="./index-BCooEiNa.css">
     
-    <!-- Firebase SDK -->
+    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     
-    <!-- Registrar Service Worker -->
+    <!-- Seus scripts -->
+    <script src="./firebase-connection.js"></script>
+    <script src="./storage.js"></script>
+    
     <script>
+      // Registra Service Worker
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function() {
-          navigator.serviceWorker.register('./sw.js')
-            .then(function(registration) {
-              console.log('Service Worker registrado:', registration.scope);
-            })
-            .catch(function(error) {
-              console.log('Erro ao registrar Service Worker:', error);
-            });
-        });
+        navigator.serviceWorker.register('./sw.js');
       }
     </script>
   </head>
   <body>
     <div id="root"></div>
-    
-    <!-- Script de verificação de conexão -->
-    <script src="./conexao.js"></script>
-
-    <!-- LocalStorage Global -->
-    <script src="./storage.js"></script>
-    
-    <!-- Configuração Firebase -->
-    <script src="./firebase-config.js"></script>
-    
-    <!-- Script principal da aplicação -->
     <script type="module" crossorigin src="./index-B_0g4mRk.js"></script>
   </body>
 </html>
