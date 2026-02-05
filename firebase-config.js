@@ -1,57 +1,74 @@
-// Configuração do Firebase - Gasagua Pro
+// ==========================================
+// FIREBASE - GasAgua Pro
+// ==========================================
+
 const firebaseConfig = {
   databaseURL: "https://gasagua-pro-default-rtdb.firebaseio.com/"
 };
 
-// Inicializa Firebase
-firebase.initializeApp(firebaseConfig);
-const database = firebase.database();
+// Inicializa
+let database, dbRef;
 
-console.log("🔥 Firebase conectado com sucesso!");
+try {
+  firebase.initializeApp(firebaseConfig);
+  database = firebase.database();
+  dbRef = database.ref('sistema');
+  console.log("🔥 Firebase conectado!");
+} catch (e) {
+  console.error("❌ Erro Firebase:", e);
+}
 
-// ========== FUNÇÕES PARA USAR NO SISTEMA ==========
+// ==========================================
+// FUNÇÕES PARA O SISTEMA
+// ==========================================
 
-// Salvar dados (clientes, pedidos, etc)
-function salvarDados(caminho, dados) {
-  return database.ref(caminho).set(dados)
+// Salvar dados (chamado pelo seu sistema)
+window.salvarNaNuvem = function(dados) {
+  if (!dbRef) return Promise.reject("Offline");
+  
+  // Adiciona timestamp
+  dados.ultimaAtualizacao = new Date().toISOString();
+  
+  return dbRef.set(dados)
     .then(() => {
-      console.log("✅ Dados salvos em:", caminho);
+      console.log("✅ Dados salvos na nuvem!");
       return true;
     })
     .catch(erro => {
-      console.log("❌ Erro ao salvar:", erro);
+      console.error("❌ Erro:", erro);
       return false;
     });
-}
+};
 
-// Ler dados em tempo real
-function lerDados(caminho, callback) {
-  database.ref(caminho).on('value', (snapshot) => {
-    const dados = snapshot.val();
-    callback(dados);
-    console.log("📥 Dados lidos de:", caminho);
-  });
-}
-
-// Detecta status da conexão (online/offline)
-database.ref('.info/connected').on('value', (snap) => {
-  if (snap.val() === true) {
-    console.log('🟢 ONLINE - Sincronizando com servidor');
-    document.body.classList.remove('offline');
-  } else {
-    console.log('🔴 OFFLINE - Modo local ativado');
-    document.body.classList.add('offline');
+// Carregar dados (chamado ao iniciar)
+window.carregarDaNuvem = function(callback) {
+  if (!dbRef) {
+    if (callback) callback(null);
+    return;
   }
+  
+  dbRef.once('value')
+    .then((snapshot) => {
+      const dados = snapshot.val();
+      if (dados) {
+        console.log("☁️ Dados carregados da nuvem:", dados);
+        if (callback) callback(dados);
+      } else {
+        console.log("ℹ️ Nenhum dado na nuvem");
+        if (callback) callback(null);
+      }
+    })
+    .catch((erro) => {
+      console.error("❌ Erro ao carregar:", erro);
+      if (callback) callback(null);
+    });
+};
+
+// Verifica conexão
+database.ref('.info/connected').on('value', (snap) => {
+  const conectado = snap.val();
+  console.log(conectado ? "🟢 Online" : "🔴 Offline");
+  window.firebaseOnline = conectado;
 });
 
-// Exemplo: Salvar um cliente
-// salvarDados('clientes/cliente001', {
-//   nome: 'João Silva',
-//   telefone: '11999999999',
-//   endereco: 'Rua ABC, 123'
-// });
-
-// Exemplo: Ler todos os clientes
-// lerDados('clientes', (dados) => {
-//   console.log('Clientes:', dados);
-// });
+console.log("✅ Firebase pronto!");
