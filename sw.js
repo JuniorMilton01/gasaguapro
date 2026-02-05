@@ -35,7 +35,7 @@ self.addEventListener('fetch', function(event) {
     return;
   }
   
-  // Não intercepta requisições do Firebase
+  // NOVO: Não intercepta requisições do Firebase (sempre online)
   if (event.request.url.includes('firebaseio.com') || 
       event.request.url.includes('googleapis.com')) {
     return;
@@ -59,4 +59,46 @@ self.addEventListener('fetch', function(event) {
             caches.open(CACHE_NAME).then(function(cache) {
               cache.put(event.request, responseToCache);
             });
-            return
+            return networkResponse;
+          });
+      })
+      .catch(function() {
+        // Se falhou completamente, retorna página offline
+        console.log('Falha ao carregar:', event.request.url);
+      })
+  );
+});
+
+// Ativação - limpa caches antigos
+self.addEventListener('activate', function(event) {
+  event.waitUntil(
+    caches.keys().then(function(cacheNames) {
+      return Promise.all(
+        cacheNames.map(function(cacheName) {
+          if (cacheName !== CACHE_NAME) {
+            console.log('Deletando cache antigo:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
+  // Toma controle de todas as abas imediatamente
+  self.clients.claim();
+});
+
+// NOVO: Sincronização em background (quando voltar online)
+self.addEventListener('sync', function(event) {
+  if (event.tag === 'sincronizar-dados') {
+    event.waitUntil(
+      // Notifica todas as abas para sincronizar
+      self.clients.matchAll().then(function(clients) {
+        clients.forEach(function(client) {
+          client.postMessage({
+            type: 'SINCRONIZAR_AGORA'
+          });
+        });
+      })
+    );
+  }
+});
