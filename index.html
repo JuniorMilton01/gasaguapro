@@ -1,43 +1,17 @@
 <!doctype html>
 <html lang="pt-BR">
   <head>
-    <!-- KILL SWITCH: Impede carregamento do arquivo antigo -->
-    <script>
-      // Bloqueia qualquer tentativa de carregar index-B_0g4mRk.js
-      const originalFetch = window.fetch;
-      window.fetch = function(...args) {
-        const url = args[0];
-        if (typeof url === 'string' && url.includes('index-B_0g4mRk')) {
-          console.log('🚫 Bloqueado carregamento de:', url);
-          return Promise.reject(new Error('Arquivo desativado'));
-        }
-        return originalFetch.apply(this, args);
-      };
-      
-      // Também bloqueia scripts dinâmicos
-      const originalAppendChild = Element.prototype.appendChild;
-      Element.prototype.appendChild = function(element) {
-        if (element.tagName === 'SCRIPT' && element.src && element.src.includes('index-B_0g4mRk')) {
-          console.log('🚫 Script bloqueado:', element.src);
-          return element; // Retorna sem adicionar
-        }
-        return originalAppendChild.call(this, element);
-      };
-    </script>
-    
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GasAgua Pro - Sistema de Gestão</title>
     
-    <!-- Força recarregar sem cache -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-    
-    <link rel="manifest" href="manifest.json?v=3">
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icone-192.png">
     <meta name="theme-color" content="#2563eb">
-    <link rel="stylesheet" href="index-BCooEiNa.css?v=3">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="index-BCooEiNa.css">
     
     <!-- React -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -48,56 +22,27 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     
-    <!-- Seus scripts -->
-    <script src="firebase-config.js?v=3"></script>
-    <script src="conexao.js?v=3"></script>
-    <script src="storage.js?v=3"></script>
-    
-    <style>
-      body { 
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-        margin: 0; 
-        padding: 0;
-        background: #f5f5f5;
-      }
-      .loading { 
-        display: flex; 
-        justify-content: center; 
-        align-items: center; 
-        height: 100vh;
-        flex-direction: column;
-      }
-      .spinner {
-        width: 50px;
-        height: 50px;
-        border: 5px solid #e5e7eb;
-        border-top: 5px solid #2563eb;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin-bottom: 20px;
-      }
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-    </style>
+    <!-- Configurações -->
+    <script src="firebase-config.js"></script>
+    <script src="conexao.js"></script>
+    <script src="storage.js"></script>
   </head>
   
   <body>
-    <div id="root">
-      <div class="loading">
-        <div class="spinner"></div>
-        <h2>GasAgua Pro</h2>
-        <p>Carregando sistema...</p>
-      </div>
-    </div>
+    <div id="root"></div>
 
-    <!-- APP INLINE COMPLETO -->
+    <!-- APP COM SEU PADRÃO ORIGINAL -->
     <script type="text/babel">
-      const { useState, useEffect } = React;
+      // ==========================================
+      // INTEGRAÇÃO COM AUTO-SAVE (Seu padrão original)
+      // ==========================================
+
+      const { useEffect, useState } = React;
 
       function App() {
+        // Seu estado principal que contém TODOS os dados do sistema
         const [dadosSistema, setDadosSistema] = useState(() => {
+          // Carrega dados ao iniciar
           if (typeof window.carregarDados === 'function') {
             return window.carregarDados();
           }
@@ -111,453 +56,104 @@
           };
         });
 
-        const [abaAtiva, setAbaAtiva] = useState('dashboard');
-        const [mensagem, setMensagem] = useState('');
-
+        // ATIVA O AUTO-SAVE! (ESSENCIAL!)
         useEffect(() => {
           if (typeof window.ativarAutoSave === 'function') {
-            const desativar = window.ativarAutoSave(() => dadosSistema, {
-              intervalo: 3000,
-              debug: false
-            });
-            return () => desativar();
+            // Ativa auto-save passando função que retorna os dados atuais
+            const desativarAutoSave = window.ativarAutoSave(() => dadosSistema, 3000);
+            
+            // Limpa ao desmontar
+            return () => {
+              if (desativarAutoSave) desativarAutoSave();
+            };
           }
-        }, []);
+        }, []); // Executa apenas uma vez ao montar
 
+        // Sempre que dados mudarem, atualiza o auto-save
         useEffect(() => {
-          window.obterDadosSistema = () => dadosSistema;
+          // Atualiza a referência global para o auto-save pegar dados atualizados
+          if (typeof window.obterDadosSistema === 'function') {
+            window.obterDadosSistema = () => dadosSistema;
+          }
         }, [dadosSistema]);
 
+        // ==========================================
+        // FUNÇÕES DE MANIPULAÇÃO DE DADOS
+        // ==========================================
+
+        // Função para atualizar dados (SEMPRE use esta!)
         const atualizarDados = (novosDados) => {
           setDadosSistema(novosDados);
-          setMensagem('💾 Salvo!');
-          setTimeout(() => setMensagem(''), 1500);
+          // O auto-save vai detectar a mudança e salvar automaticamente!
         };
 
-        // Login
-        const [nome, setNome] = useState('');
-        const [senha, setSenha] = useState('');
+        // Exemplo: Adicionar venda
+        const adicionarVenda = (venda) => {
+          const novoDados = {
+            ...dadosSistema,
+            vendas: [...dadosSistema.vendas, {
+              id: Date.now(),
+              ...venda,
+              data: new Date().toISOString()
+            }]
+          };
+          atualizarDados(novoDados);
+        };
 
-        if (!dadosSistema.logado) {
-          return (
-            <div style={{ 
-              minHeight: '100vh',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-            }}>
-              <div style={{ 
-                width: '100%',
-                maxWidth: '400px',
-                padding: '40px',
-                background: 'white',
-                borderRadius: '16px',
-                boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
-              }}>
-                <h1 style={{ 
-                  textAlign: 'center', 
-                  color: '#333',
-                  marginBottom: '10px',
-                  fontSize: '28px'
-                }}>
-                  🔥 GasAgua Pro
-                </h1>
-                <p style={{ 
-                  textAlign: 'center', 
-                  color: '#666',
-                  marginBottom: '30px'
-                }}>
-                  Sistema de Gestão
-                </p>
-                
-                <input
-                  type="text"
-                  placeholder="Usuário"
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  style={{ 
-                    width: '100%',
-                    padding: '14px',
-                    marginBottom: '12px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    boxSizing: 'border-box',
-                    outline: 'none'
-                  }}
-                />
-                <input
-                  type="password"
-                  placeholder="Senha"
-                  value={senha}
-                  onChange={(e) => setSenha(e.target.value)}
-                  style={{ 
-                    width: '100%',
-                    padding: '14px',
-                    marginBottom: '20px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    boxSizing: 'border-box',
-                    outline: 'none'
-                  }}
-                />
-                
-                <button
-                  onClick={() => {
-                    if (window.login && window.login(nome, senha)) {
-                      atualizarDados(window.carregarDados());
-                    } else {
-                      alert('❌ Login falhou! Clique em "Criar usuário padrão" primeiro.');
-                    }
-                  }}
-                  style={{ 
-                    width: '100%',
-                    padding: '14px',
-                    background: '#667eea',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    marginBottom: '15px'
-                  }}
-                >
-                  Entrar
-                </button>
-                
-                <button
-                  onClick={() => {
-                    if (window.salvarUsuario) {
-                      window.salvarUsuario({ 
-                        nome: 'admin', 
-                        email: 'admin@teste.com', 
-                        senha: '123456' 
-                      });
-                      alert('✅ Usuário criado: admin / 123456');
-                    }
-                  }}
-                  style={{ 
-                    width: '100%',
-                    padding: '12px',
-                    background: 'transparent',
-                    color: '#667eea',
-                    border: '2px solid #667eea',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Criar Usuário Padrão
-                </button>
+        // Exemplo: Adicionar cliente
+        const adicionarCliente = (cliente) => {
+          const novoDados = {
+            ...dadosSistema,
+            clientes: [...dadosSistema.clientes, {
+              id: Date.now(),
+              ...cliente,
+              dataCadastro: new Date().toISOString()
+            }]
+          };
+          atualizarDados(novoDados);
+        };
 
-                <div style={{ 
-                  marginTop: '20px',
-                  padding: '15px',
-                  background: '#f8f9fa',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  color: '#666'
-                }}>
-                  <strong>Status do Sistema:</strong><br/>
-                  🔥 Firebase: {window.salvarNaNuvem ? '✅' : '❌'}<br/>
-                  💾 Auto-save: {window.ativarAutoSave ? '✅' : '❌'}
-                </div>
-              </div>
-            </div>
-          );
-        }
+        // Exemplo: Atualizar estoque
+        const atualizarEstoque = (produto) => {
+          const estoqueAtual = dadosSistema.estoque || [];
+          const produtoExistente = estoqueAtual.find(p => p.id === produto.id);
+          
+          let novoEstoque;
+          if (produtoExistente) {
+            novoEstoque = estoqueAtual.map(p => 
+              p.id === produto.id ? { ...p, ...produto, dataAtualizacao: new Date().toISOString() } : p
+            );
+          } else {
+            novoEstoque = [...estoqueAtual, { ...produto, id: Date.now(), dataCadastro: new Date().toISOString() }];
+          }
+          
+          atualizarDados({
+            ...dadosSistema,
+            estoque: novoEstoque
+          });
+        };
 
-        // INTERFACE PRINCIPAL
-        return (
-          <div style={{ minHeight: '100vh', background: '#f0f2f5' }}>
-            {/* Header */}
-            <div style={{ 
-              background: 'white',
-              padding: '15px 30px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <div>
-                <h1 style={{ margin: 0, fontSize: '24px', color: '#333' }}>
-                  🔥 GasAgua Pro
-                </h1>
-                <p style={{ margin: '5px 0 0 0', color: '#666', fontSize: '14px' }}>
-                  Bem-vindo, {dadosSistema.usuarioAtual?.nome}
-                </p>
-              </div>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                {mensagem && (
-                  <span style={{ 
-                    color: '#16a34a',
-                    fontWeight: 'bold',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}>
-                    {mensagem}
-                  </span>
-                )}
-                <button
-                  onClick={() => window.salvarAgora && window.salvarAgora()}
-                  style={{ 
-                    padding: '10px 20px',
-                    background: '#16a34a',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  💾 Salvar
-                </button>
-                <button
-                  onClick={() => {
-                    window.logout && window.logout();
-                    atualizarDados(window.carregarDados());
-                  }}
-                  style={{ 
-                    padding: '10px 20px',
-                    background: '#dc2626',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Sair
-                </button>
-              </div>
-            </div>
+        // Forçar salvamento manual (útil para botão "Salvar")
+        const salvarManualmente = () => {
+          if (typeof window.salvarAgora === 'function') {
+            window.salvarAgora();
+            alert("💾 Dados salvos com sucesso!");
+          }
+        };
 
-            {/* Menu */}
-            <div style={{ 
-              display: 'flex',
-              gap: '5px',
-              padding: '20px 30px 0',
-              background: 'white',
-              borderBottom: '1px solid #e0e0e0'
-            }}>
-              {['dashboard', 'vendas', 'clientes', 'estoque'].map(aba => (
-                <button
-                  key={aba}
-                  onClick={() => setAbaAtiva(aba)}
-                  style={{ 
-                    padding: '12px 24px',
-                    background: abaAtiva === aba ? '#667eea' : 'transparent',
-                    color: abaAtiva === aba ? 'white' : '#666',
-                    border: 'none',
-                    borderBottom: abaAtiva === aba ? '3px solid #667eea' : '3px solid transparent',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: 'bold',
-                    textTransform: 'uppercase'
-                  }}
-                >
-                  {aba}
-                </button>
-              ))}
-            </div>
+        // ... resto do seu componente
 
-            {/* Conteúdo */}
-            <div style={{ padding: '30px' }}>
-              {abaAtiva === 'dashboard' && (
-                <div>
-                  <div style={{ 
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-                    gap: '20px',
-                    marginBottom: '30px'
-                  }}>
-                    <div style={{ 
-                      background: 'white',
-                      padding: '25px',
-                      borderRadius: '12px',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                    }}>
-                      <h3 style={{ margin: '0 0 10px 0', color: '#667eea' }}>👥 Clientes</h3>
-                      <p style={{ fontSize: '36px', margin: 0, fontWeight: 'bold', color: '#333' }}>
-                        {dadosSistema.clientes?.length || 0}
-                      </p>
-                    </div>
-                    <div style={{ 
-                      background: 'white',
-                      padding: '25px',
-                      borderRadius: '12px',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                    }}>
-                      <h3 style={{ margin: '0 0 10px 0', color: '#16a34a' }}>🛒 Vendas</h3>
-                      <p style={{ fontSize: '36px', margin: 0, fontWeight: 'bold', color: '#333' }}>
-                        {dadosSistema.vendas?.length || 0}
-                      </p>
-                    </div>
-                    <div style={{ 
-                      background: 'white',
-                      padding: '25px',
-                      borderRadius: '12px',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                    }}>
-                      <h3 style={{ margin: '0 0 10px 0', color: '#d97706' }}>📦 Produtos</h3>
-                      <p style={{ fontSize: '36px', margin: 0, fontWeight: 'bold', color: '#333' }}>
-                        {dadosSistema.estoque?.length || 0}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {abaAtiva === 'vendas' && (
-                <div style={{ background: 'white', padding: '25px', borderRadius: '12px' }}>
-                  <h2>🛒 Nova Venda</h2>
-                  <VendaForm onVenda={(venda) => {
-                    const dados = window.carregarDados();
-                    dados.vendas = dados.vendas || [];
-                    dados.vendas.push({ id: Date.now(), ...venda, data: new Date().toLocaleString() });
-                    atualizarDados(dados);
-                  }} />
-                </div>
-              )}
-
-              {abaAtiva === 'clientes' && (
-                <div style={{ background: 'white', padding: '25px', borderRadius: '12px' }}>
-                  <h2>👥 Novo Cliente</h2>
-                  <ClienteForm onCliente={(cliente) => {
-                    const dados = window.carregarDados();
-                    dados.clientes = dados.clientes || [];
-                    dados.clientes.push({ id: Date.now(), ...cliente, dataCadastro: new Date().toLocaleString() });
-                    atualizarDados(dados);
-                  }} />
-                  <ListaClientes clientes={dadosSistema.clientes || []} />
-                </div>
-              )}
-
-              {abaAtiva === 'estoque' && (
-                <div style={{ background: 'white', padding: '25px', borderRadius: '12px' }}>
-                  <h2>📦 Novo Produto</h2>
-                  <ProdutoForm onProduto={(produto) => {
-                    const dados = window.carregarDados();
-                    dados.estoque = dados.estoque || [];
-                    dados.estoque.push({ id: Date.now(), ...produto, dataCadastro: new Date().toLocaleString() });
-                    atualizarDados(dados);
-                  }} />
-                  <ListaProdutos produtos={dadosSistema.estoque || []} />
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      }
-
-      // Componentes auxiliares
-      function VendaForm({ onVenda }) {
-        const [venda, setVenda] = useState({ cliente: '', produto: '', quantidade: 1, valor: '' });
-        
-        return (
-          <div style={{ display: 'grid', gap: '12px', maxWidth: '400px' }}>
-            <input placeholder="Cliente" value={venda.cliente} onChange={e => setVenda({...venda, cliente: e.target.value})} 
-              style={{ padding: '12px', border: '1px solid #ddd', borderRadius: '6px' }} />
-            <input placeholder="Produto" value={venda.produto} onChange={e => setVenda({...venda, produto: e.target.value})}
-              style={{ padding: '12px', border: '1px solid #ddd', borderRadius: '6px' }} />
-            <input type="number" placeholder="Quantidade" value={venda.quantidade} onChange={e => setVenda({...venda, quantidade: e.target.value})}
-              style={{ padding: '12px', border: '1px solid #ddd', borderRadius: '6px' }} />
-            <input type="number" placeholder="Valor" value={venda.valor} onChange={e => setVenda({...venda, valor: e.target.value})}
-              style={{ padding: '12px', border: '1px solid #ddd', borderRadius: '6px' }} />
-            <button onClick={() => onVenda(venda)} 
-              style={{ padding: '12px', background: '#16a34a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
-              Registrar Venda
-            </button>
-          </div>
-        );
-      }
-
-      function ClienteForm({ onCliente }) {
-        const [cliente, setCliente] = useState({ nome: '', telefone: '', endereco: '' });
-        
-        return (
-          <div style={{ display: 'grid', gap: '12px', maxWidth: '400px', marginBottom: '20px' }}>
-            <input placeholder="Nome" value={cliente.nome} onChange={e => setCliente({...cliente, nome: e.target.value})}
-              style={{ padding: '12px', border: '1px solid #ddd', borderRadius: '6px' }} />
-            <input placeholder="Telefone" value={cliente.telefone} onChange={e => setCliente({...cliente, telefone: e.target.value})}
-              style={{ padding: '12px', border: '1px solid #ddd', borderRadius: '6px' }} />
-            <input placeholder="Endereço" value={cliente.endereco} onChange={e => setCliente({...cliente, endereco: e.target.value})}
-              style={{ padding: '12px', border: '1px solid #ddd', borderRadius: '6px' }} />
-            <button onClick={() => onCliente(cliente)}
-              style={{ padding: '12px', background: '#667eea', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
-              Cadastrar Cliente
-            </button>
-          </div>
-        );
-      }
-
-      function ListaClientes({ clientes }) {
         return (
           <div>
-            <h3>Clientes Cadastrados ({clientes.length})</h3>
-            {clientes.map(c => (
-              <div key={c.id} style={{ padding: '15px', borderBottom: '1px solid #eee' }}>
-                <strong>{c.nome}</strong><br/>
-                <small style={{ color: '#666' }}>{c.telefone} | {c.endereco}</small>
-              </div>
-            ))}
-          </div>
-        );
-      }
-
-      function ProdutoForm({ onProduto }) {
-        const [produto, setProduto] = useState({ nome: '', tipo: 'gas', quantidade: 0, preco: 0 });
-        
-        return (
-          <div style={{ display: 'grid', gap: '12px', maxWidth: '400px', marginBottom: '20px' }}>
-            <input placeholder="Nome do produto" value={produto.nome} onChange={e => setProduto({...produto, nome: e.target.value})}
-              style={{ padding: '12px', border: '1px solid #ddd', borderRadius: '6px' }} />
-            <select value={produto.tipo} onChange={e => setProduto({...produto, tipo: e.target.value})}
-              style={{ padding: '12px', border: '1px solid #ddd', borderRadius: '6px' }}>
-              <option value="gas">🔥 Gás</option>
-              <option value="agua">💧 Água</option>
-            </select>
-            <input type="number" placeholder="Quantidade" value={produto.quantidade} onChange={e => setProduto({...produto, quantidade: e.target.value})}
-              style={{ padding: '12px', border: '1px solid #ddd', borderRadius: '6px' }} />
-            <input type="number" placeholder="Preço" value={produto.preco} onChange={e => setProduto({...produto, preco: e.target.value})}
-              style={{ padding: '12px', border: '1px solid #ddd', borderRadius: '6px' }} />
-            <button onClick={() => onProduto(produto)}
-              style={{ padding: '12px', background: '#d97706', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
-              Cadastrar Produto
+            {/* Seu JSX aqui */}
+            <button onClick={salvarManualmente}>
+              💾 Salvar Agora
             </button>
           </div>
         );
       }
 
-      function ListaProdutos({ produtos }) {
-        return (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '15px' }}>
-            {produtos.map(p => (
-              <div key={p.id} style={{ 
-                padding: '20px', 
-                background: p.tipo === 'gas' ? '#fef3c7' : '#dbeafe',
-                borderRadius: '8px',
-                border: '2px solid ' + (p.tipo === 'gas' ? '#f59e0b' : '#3b82f6')
-              }}>
-                <span style={{ 
-                  background: p.tipo === 'gas' ? '#f59e0b' : '#3b82f6',
-                  color: 'white',
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  fontSize: '12px'
-                }}>
-                  {p.tipo === 'gas' ? '🔥 Gás' : '💧 Água'}
-                </span>
-                <h4 style={{ margin: '10px 0 5px 0' }}>{p.nome}</h4>
-                <p style={{ margin: 0, color: '#666' }}>Estoque: {p.quantidade}</p>
-                <p style={{ margin: '5px 0 0 0', fontWeight: 'bold' }}>R$ {p.preco}</p>
-              </div>
-            ))}
-          </div>
-        );
-      }
-
+      // Renderiza o app
       const root = ReactDOM.createRoot(document.getElementById('root'));
       root.render(<App />);
     </script>
