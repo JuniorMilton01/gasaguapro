@@ -35,7 +35,7 @@ self.addEventListener('fetch', function(event) {
     return;
   }
   
-  // NOVO: Não intercepta requisições do Firebase (sempre online)
+  // Não intercepta requisições do Firebase (sempre online)
   if (event.request.url.includes('firebaseio.com') || 
       event.request.url.includes('googleapis.com')) {
     return;
@@ -87,7 +87,7 @@ self.addEventListener('activate', function(event) {
   self.clients.claim();
 });
 
-// NOVO: Sincronização em background (quando voltar online)
+// Sincronização em background (quando voltar online)
 self.addEventListener('sync', function(event) {
   if (event.tag === 'sincronizar-dados') {
     event.waitUntil(
