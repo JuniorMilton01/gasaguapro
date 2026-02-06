@@ -4,34 +4,666 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GasAgua Pro - Sistema de Gestão</title>
+    
+    <!-- PWA -->
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icone-192.png">
     <meta name="theme-color" content="#2563eb">
+    
+    <!-- CSS -->
     <link rel="stylesheet" href="index-BCooEiNa.css">
+    
+    <!-- React via CDN (confiável) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel para JSX inline (desenvolvimento) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    
+    <!-- Configurações -->
     <script src="firebase-config.js"></script>
-  </head>
-  <body>
-    <div id="root">
-      <div style="padding: 20px; text-align: center;">
-        <h1>GasAgua Pro</h1>
-        <p>Sistema carregando...</p>
-        <p>Se esta mensagem persistir, o arquivo JavaScript principal não foi encontrado.</p>
-      </div>
-    </div>
     <script src="conexao.js"></script>
     <script src="storage.js"></script>
-    <script>
-      // Teste rápido - app inline
-      console.log("Sistema iniciado manualmente");
-      document.getElementById('root').innerHTML = 
-        '<div style="padding: 20px;">' +
-        '<h1>✅ GasAgua Pro Funcionando!</h1>' +
-        '<p>Auto-save ativo: ' + (typeof window.ativarAutoSave !== 'undefined' ? 'SIM' : 'NÃO') + '</p>' +
-        '<p>Firebase: ' + (typeof window.salvarNaNuvem !== 'undefined' ? 'Conectado' : 'Desconectado') + '</p>' +
-        '<button onclick="window.salvarAgora && window.salvarAgora()">Testar Salvar</button>' +
-        '</div>';
+    
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 0; padding: 0; }
+      .loading { display: flex; justify-content: center; align-items: center; height: 100vh; }
+      .error { color: #dc2626; padding: 20px; text-align: center; }
+      .success { color: #16a34a; }
+    </style>
+  </head>
+  
+  <body>
+    <div id="root">
+      <div class="loading">
+        <div>
+          <h2>⏳ GasAgua Pro</h2>
+          <p>Inicializando sistema...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- APP PRINCIPAL INLINE (não depende de arquivo externo) -->
+    <script type="text/babel">
+      const { useState, useEffect } = React;
+
+      function App() {
+        const [dadosSistema, setDadosSistema] = useState(() => {
+          if (typeof window.carregarDados === 'function') {
+            return window.carregarDados();
+          }
+          return {
+            logado: false,
+            usuarios: [],
+            vendas: [],
+            clientes: [],
+            estoque: [],
+            ultimoAcesso: null
+          };
+        });
+
+        const [abaAtiva, setAbaAtiva] = useState('dashboard');
+        const [mensagem, setMensagem] = useState('');
+
+        // Ativa auto-save
+        useEffect(() => {
+          if (typeof window.ativarAutoSave === 'function') {
+            const desativar = window.ativarAutoSave(() => dadosSistema, {
+              intervalo: 3000,
+              salvarAoSair: true,
+              salvarAoMudarAba: true,
+              debug: true
+            });
+            return () => desativar();
+          }
+        }, []);
+
+        // Atualiza referência global
+        useEffect(() => {
+          window.obterDadosSistema = () => dadosSistema;
+        }, [dadosSistema]);
+
+        const atualizarDados = (novosDados) => {
+          setDadosSistema(novosDados);
+          setMensagem('💾 Dados atualizados!');
+          setTimeout(() => setMensagem(''), 2000);
+        };
+
+        // Login
+        const [nome, setNome] = useState('');
+        const [senha, setSenha] = useState('');
+
+        const fazerLogin = () => {
+          if (typeof window.login === 'function') {
+            if (window.login(nome, senha)) {
+              atualizarDados(window.carregarDados());
+            } else {
+              alert('❌ Login falhou! Use: admin / 123456');
+            }
+          }
+        };
+
+        const fazerLogout = () => {
+          if (typeof window.logout === 'function') {
+            window.logout();
+            atualizarDados(window.carregarDados());
+          }
+        };
+
+        // Criar usuário padrão se não existir
+        const criarUsuarioPadrao = () => {
+          if (typeof window.salvarUsuario === 'function') {
+            window.salvarUsuario({ 
+              nome: 'admin', 
+              email: 'admin@gasagua.com', 
+              senha: '123456' 
+            });
+            alert('✅ Usuário criado: admin / 123456');
+          }
+        };
+
+        // Adicionar venda
+        const [novaVenda, setNovaVenda] = useState({ 
+          cliente: '', 
+          produto: '', 
+          quantidade: 1, 
+          valor: 0 
+        });
+
+        const adicionarVenda = () => {
+          if (!novaVenda.cliente || !novaVenda.produto) {
+            alert('Preencha todos os campos!');
+            return;
+          }
+          
+          const dados = window.carregarDados();
+          dados.vendas = dados.vendas || [];
+          dados.vendas.push({
+            id: Date.now(),
+            ...novaVenda,
+            data: new Date().toLocaleString()
+          });
+          
+          atualizarDados(dados);
+          setNovaVenda({ cliente: '', produto: '', quantidade: 1, valor: 0 });
+        };
+
+        // Adicionar cliente
+        const [novoCliente, setNovoCliente] = useState({ 
+          nome: '', 
+          telefone: '', 
+          endereco: '' 
+        });
+
+        const adicionarCliente = () => {
+          if (!novoCliente.nome) {
+            alert('Nome é obrigatório!');
+            return;
+          }
+          
+          const dados = window.carregarDados();
+          dados.clientes = dados.clientes || [];
+          dados.clientes.push({
+            id: Date.now(),
+            ...novoCliente,
+            dataCadastro: new Date().toLocaleString()
+          });
+          
+          atualizarDados(dados);
+          setNovoCliente({ nome: '', telefone: '', endereco: '' });
+        };
+
+        // Adicionar produto
+        const [novoProduto, setNovoProduto] = useState({ 
+          nome: '', 
+          quantidade: 0, 
+          preco: 0, 
+          tipo: 'gas' 
+        });
+
+        const adicionarProduto = () => {
+          if (!novoProduto.nome) {
+            alert('Nome é obrigatório!');
+            return;
+          }
+          
+          const dados = window.carregarDados();
+          dados.estoque = dados.estoque || [];
+          dados.estoque.push({
+            id: Date.now(),
+            ...novoProduto,
+            dataCadastro: new Date().toLocaleString()
+          });
+          
+          atualizarDados(dados);
+          setNovoProduto({ nome: '', quantidade: 0, preco: 0, tipo: 'gas' });
+        };
+
+        // Salvar manualmente
+        const salvarManual = () => {
+          if (typeof window.salvarAgora === 'function') {
+            window.salvarAgora();
+            setMensagem('✅ Dados salvos manualmente!');
+            setTimeout(() => setMensagem(''), 2000);
+          }
+        };
+
+        // TELA DE LOGIN
+        if (!dadosSistema.logado) {
+          return (
+            <div style={{ 
+              maxWidth: '400px', 
+              margin: '50px auto', 
+              padding: '30px',
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+              borderRadius: '8px'
+            }}>
+              <h1 style={{ textAlign: 'center', color: '#2563eb' }}>
+                🔥 GasAgua Pro
+              </h1>
+              <p style={{ textAlign: 'center', color: '#666' }}>
+                Sistema de Gestão
+              </p>
+              
+              <div style={{ marginTop: '20px' }}>
+                <input
+                  type="text"
+                  placeholder="Usuário"
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  style={{ 
+                    width: '100%', 
+                    padding: '12px', 
+                    marginBottom: '10px',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                <input
+                  type="password"
+                  placeholder="Senha"
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  style={{ 
+                    width: '100%', 
+                    padding: '12px', 
+                    marginBottom: '15px',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                <button
+                  onClick={fazerLogin}
+                  style={{ 
+                    width: '100%', 
+                    padding: '12px',
+                    background: '#2563eb',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '16px'
+                  }}
+                >
+                  Entrar
+                </button>
+              </div>
+              
+              <div style={{ marginTop: '20px', textAlign: 'center' }}>
+                <button
+                  onClick={criarUsuarioPadrao}
+                  style={{ 
+                    background: 'none',
+                    border: 'none',
+                    color: '#666',
+                    textDecoration: 'underline',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Criar usuário padrão (admin/123456)
+                </button>
+              </div>
+              
+              <div style={{ marginTop: '20px', padding: '10px', background: '#f3f4f6', borderRadius: '4px', fontSize: '12px' }}>
+                <strong>Status:</strong><br/>
+                Firebase: {typeof window.salvarNaNuvem !== 'undefined' ? '🟢 Conectado' : '🔴 Desconectado'}<br/>
+                Auto-save: {typeof window.ativarAutoSave !== 'undefined' ? '🟢 Ativo' : '🔴 Inativo'}
+              </div>
+            </div>
+          );
+        }
+
+        // TELA PRINCIPAL
+        return (
+          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+            {/* Header */}
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              padding: '20px',
+              background: '#2563eb',
+              color: 'white',
+              borderRadius: '8px',
+              marginBottom: '20px'
+            }}>
+              <div>
+                <h1 style={{ margin: 0 }}>🔥 GasAgua Pro</h1>
+                <p style={{ margin: '5px 0 0 0', opacity: 0.9 }}>
+                  Bem-vindo, {dadosSistema.usuarioAtual?.nome || 'Usuário'}
+                </p>
+              </div>
+              <div>
+                <button
+                  onClick={salvarManual}
+                  style={{ 
+                    padding: '10px 20px',
+                    marginRight: '10px',
+                    background: '#16a34a',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  💾 Salvar Agora
+                </button>
+                <button
+                  onClick={fazerLogout}
+                  style={{ 
+                    padding: '10px 20px',
+                    background: '#dc2626',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Sair
+                </button>
+              </div>
+            </div>
+
+            {/* Mensagem */}
+            {mensagem && (
+              <div style={{ 
+                padding: '10px', 
+                background: '#dbeafe', 
+                color: '#1e40af',
+                borderRadius: '4px',
+                marginBottom: '15px',
+                textAlign: 'center'
+              }}>
+                {mensagem}
+              </div>
+            )}
+
+            {/* Menu */}
+            <div style={{ 
+              display: 'flex', 
+              gap: '10px', 
+              marginBottom: '20px',
+              borderBottom: '2px solid #e5e7eb',
+              paddingBottom: '10px'
+            }}>
+              {['dashboard', 'vendas', 'clientes', 'estoque'].map(aba => (
+                <button
+                  key={aba}
+                  onClick={() => setAbaAtiva(aba)}
+                  style={{ 
+                    padding: '10px 20px',
+                    background: abaAtiva === aba ? '#2563eb' : '#f3f4f6',
+                    color: abaAtiva === aba ? 'white' : '#374151',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    textTransform: 'capitalize'
+                  }}
+                >
+                  {aba}
+                </button>
+              ))}
+            </div>
+
+            {/* Conteúdo */}
+            <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+              
+              {/* DASHBOARD */}
+              {abaAtiva === 'dashboard' && (
+                <div>
+                  <h2>📊 Dashboard</h2>
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                    gap: '15px',
+                    marginTop: '20px'
+                  }}>
+                    <div style={{ padding: '20px', background: '#dbeafe', borderRadius: '8px' }}>
+                      <h3 style={{ margin: '0 0 10px 0', color: '#1e40af' }}>Clientes</h3>
+                      <p style={{ fontSize: '32px', margin: 0, fontWeight: 'bold', color: '#1e40af' }}>
+                        {dadosSistema.clientes?.length || 0}
+                      </p>
+                    </div>
+                    <div style={{ padding: '20px', background: '#dcfce7', borderRadius: '8px' }}>
+                      <h3 style={{ margin: '0 0 10px 0', color: '#166534' }}>Vendas</h3>
+                      <p style={{ fontSize: '32px', margin: 0, fontWeight: 'bold', color: '#166534' }}>
+                        {dadosSistema.vendas?.length || 0}
+                      </p>
+                    </div>
+                    <div style={{ padding: '20px', background: '#fef3c7', borderRadius: '8px' }}>
+                      <h3 style={{ margin: '0 0 10px 0', color: '#92400e' }}>Produtos</h3>
+                      <p style={{ fontSize: '32px', margin: 0, fontWeight: 'bold', color: '#92400e' }}>
+                        {dadosSistema.estoque?.length || 0}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div style={{ marginTop: '30px' }}>
+                    <h3>📈 Últimas Vendas</h3>
+                    {(dadosSistema.vendas || []).slice(-5).reverse().map(venda => (
+                      <div key={venda.id} style={{ 
+                        padding: '10px', 
+                        borderBottom: '1px solid #e5e7eb',
+                        display: 'flex',
+                        justifyContent: 'space-between'
+                      }}>
+                        <span>{venda.cliente} - {venda.produto}</span>
+                        <span style={{ fontWeight: 'bold' }}>R$ {venda.valor}</span>
+                      </div>
+                    ))}
+                    {(dadosSistema.vendas || []).length === 0 && (
+                      <p style={{ color: '#666' }}>Nenhuma venda registrada</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* VENDAS */}
+              {abaAtiva === 'vendas' && (
+                <div>
+                  <h2>🛒 Nova Venda</h2>
+                  <div style={{ display: 'grid', gap: '10px', maxWidth: '400px', marginTop: '15px' }}>
+                    <input
+                      type="text"
+                      placeholder="Nome do cliente"
+                      value={novaVenda.cliente}
+                      onChange={(e) => setNovaVenda({...novaVenda, cliente: e.target.value})}
+                      style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Produto"
+                      value={novaVenda.produto}
+                      onChange={(e) => setNovaVenda({...novaVenda, produto: e.target.value})}
+                      style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Quantidade"
+                      value={novaVenda.quantidade}
+                      onChange={(e) => setNovaVenda({...novaVenda, quantidade: parseInt(e.target.value) || 0})}
+                      style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Valor total"
+                      value={novaVenda.valor}
+                      onChange={(e) => setNovaVenda({...novaVenda, valor: parseFloat(e.target.value) || 0})}
+                      style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                    <button
+                      onClick={adicionarVenda}
+                      style={{ 
+                        padding: '12px',
+                        background: '#16a34a',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Registrar Venda
+                    </button>
+                  </div>
+
+                  <h3 style={{ marginTop: '30px' }}>📋 Histórico de Vendas</h3>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '15px' }}>
+                    <thead>
+                      <tr style={{ background: '#f3f4f6' }}>
+                        <th style={{ padding: '10px', textAlign: 'left' }}>Data</th>
+                        <th style={{ padding: '10px', textAlign: 'left' }}>Cliente</th>
+                        <th style={{ padding: '10px', textAlign: 'left' }}>Produto</th>
+                        <th style={{ padding: '10px', textAlign: 'right' }}>Valor</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(dadosSistema.vendas || []).slice().reverse().map(venda => (
+                        <tr key={venda.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '10px' }}>{venda.data}</td>
+                          <td style={{ padding: '10px' }}>{venda.cliente}</td>
+                          <td style={{ padding: '10px' }}>{venda.produto}</td>
+                          <td style={{ padding: '10px', textAlign: 'right' }}>R$ {venda.valor}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* CLIENTES */}
+              {abaAtiva === 'clientes' && (
+                <div>
+                  <h2>👥 Cadastrar Cliente</h2>
+                  <div style={{ display: 'grid', gap: '10px', maxWidth: '400px', marginTop: '15px' }}>
+                    <input
+                      type="text"
+                      placeholder="Nome completo"
+                      value={novoCliente.nome}
+                      onChange={(e) => setNovoCliente({...novoCliente, nome: e.target.value})}
+                      style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                    <input
+                      type="tel"
+                      placeholder="Telefone"
+                      value={novoCliente.telefone}
+                      onChange={(e) => setNovoCliente({...novoCliente, telefone: e.target.value})}
+                      style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Endereço"
+                      value={novoCliente.endereco}
+                      onChange={(e) => setNovoCliente({...novoCliente, endereco: e.target.value})}
+                      style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                    <button
+                      onClick={adicionarCliente}
+                      style={{ 
+                        padding: '12px',
+                        background: '#2563eb',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Cadastrar Cliente
+                    </button>
+                  </div>
+
+                  <h3 style={{ marginTop: '30px' }}>📋 Lista de Clientes</h3>
+                  <div style={{ display: 'grid', gap: '10px', marginTop: '15px' }}>
+                    {(dadosSistema.clientes || []).map(cliente => (
+                      <div key={cliente.id} style={{ 
+                        padding: '15px',
+                        background: '#f9fafb',
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb'
+                      }}>
+                        <strong>{cliente.nome}</strong><br/>
+                        <span style={{ color: '#666', fontSize: '14px' }}>
+                          📞 {cliente.telefone || 'Sem telefone'} | 📍 {cliente.endereco || 'Sem endereço'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ESTOQUE */}
+              {abaAtiva === 'estoque' && (
+                <div>
+                  <h2>📦 Cadastrar Produto</h2>
+                  <div style={{ display: 'grid', gap: '10px', maxWidth: '400px', marginTop: '15px' }}>
+                    <input
+                      type="text"
+                      placeholder="Nome do produto"
+                      value={novoProduto.nome}
+                      onChange={(e) => setNovoProduto({...novoProduto, nome: e.target.value})}
+                      style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                    <select
+                      value={novoProduto.tipo}
+                      onChange={(e) => setNovoProduto({...novoProduto, tipo: e.target.value})}
+                      style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    >
+                      <option value="gas">Gás</option>
+                      <option value="agua">Água</option>
+                    </select>
+                    <input
+                      type="number"
+                      placeholder="Quantidade em estoque"
+                      value={novoProduto.quantidade}
+                      onChange={(e) => setNovoProduto({...novoProduto, quantidade: parseInt(e.target.value) || 0})}
+                      style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Preço unitário"
+                      value={novoProduto.preco}
+                      onChange={(e) => setNovoProduto({...novoProduto, preco: parseFloat(e.target.value) || 0})}
+                      style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    />
+                    <button
+                      onClick={adicionarProduto}
+                      style={{ 
+                        padding: '12px',
+                        background: '#d97706',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Cadastrar Produto
+                    </button>
+                  </div>
+
+                  <h3 style={{ marginTop: '30px' }}>📋 Produtos em Estoque</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '15px', marginTop: '15px' }}>
+                    {(dadosSistema.estoque || []).map(produto => (
+                      <div key={produto.id} style={{ 
+                        padding: '15px',
+                        background: produto.tipo === 'gas' ? '#fef3c7' : '#dbeafe',
+                        borderRadius: '8px',
+                        border: '1px solid #e5e7eb'
+                      }}>
+                        <div style={{ 
+                          display: 'inline-block',
+                          padding: '4px 8px',
+                          background: produto.tipo === 'gas' ? '#f59e0b' : '#3b82f6',
+                          color: 'white',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          marginBottom: '8px'
+                        }}>
+                          {produto.tipo === 'gas' ? '🔥 Gás' : '💧 Água'}
+                        </div>
+                        <h4 style={{ margin: '0 0 8px 0' }}>{produto.nome}</h4>
+                        <p style={{ margin: '0', color: '#666', fontSize: '14px' }}>
+                          Estoque: <strong>{produto.quantidade}</strong> unidades<br/>
+                          Preço: <strong>R$ {produto.preco}</strong>
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </div>
+        );
+      }
+
+      // Renderiza
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<App />);
     </script>
   </body>
 </html>
