@@ -1,6 +1,5 @@
 // ==========================================
 // STORAGE - LocalStorage + Firebase + Auto-Save
-// Versão consolidada e otimizada
 // ==========================================
 
 const APP_KEY = "gasaguapro";
@@ -34,7 +33,6 @@ function carregarLocal() {
 // ==========================================
 
 function salvarDados(dados) {
-  // Adiciona timestamp de atualização
   dados.ultimaAtualizacao = new Date().toISOString();
   
   // 1. Salva localmente (sempre)
@@ -52,25 +50,21 @@ function salvarDados(dados) {
       .catch(() => {
         console.log("📵 Offline - sincroniza depois");
       });
-  } else {
-    console.log("⏳ Firebase ainda não carregado");
   }
   
   return dados;
 }
 
 // ==========================================
-// FUNÇÃO PRINCIPAL: Carregar (Local primeiro, Nuvem depois)
+// FUNÇÃO PRINCIPAL: Carregar
 // ==========================================
 
 function carregarDados() {
-  // 1. Tenta carregar do LocalStorage (rápido)
   const local = carregarLocal();
   
   if (local) {
     console.log("💾 Dados carregados do local");
     
-    // 2. Verifica se tem atualizações na nuvem (em background)
     setTimeout(() => {
       verificarNuvem();
     }, 1000);
@@ -78,8 +72,6 @@ function carregarDados() {
     return local;
   }
   
-  // 3. Se não tem local, retorna estrutura vazia
-  // (a restauração da nuvem acontece no load da página)
   return {
     logado: false,
     usuarios: [],
@@ -102,7 +94,6 @@ function verificarNuvem() {
     
     const local = carregarLocal();
     
-    // Se nuvem tem dados mais recentes, atualiza local
     if (dadosNuvem.ultimaAtualizacao && local && local.ultimaAtualizacao) {
       const dataNuvem = new Date(dadosNuvem.ultimaAtualizacao);
       const dataLocal = new Date(local.ultimaAtualizacao);
@@ -112,7 +103,6 @@ function verificarNuvem() {
         salvarLocal(dadosNuvem);
       }
     } else if (dadosNuvem && !local) {
-      // Se não tem local mas tem na nuvem, restaura
       console.log("✅ Restaurando dados da nuvem!");
       salvarLocal(dadosNuvem);
       alert("Dados restaurados com sucesso!");
@@ -122,15 +112,13 @@ function verificarNuvem() {
 }
 
 // ==========================================
-// RESTAURAÇÃO AUTOMÁTICA AO CARREGAR PÁGINA
+// RESTAURAÇÃO AUTOMÁTICA
 // ==========================================
 
 window.addEventListener('load', () => {
-  // Aguarda Firebase carregar
   setTimeout(() => {
     const local = carregarLocal();
     
-    // Se não tem dados locais, tenta buscar na nuvem
     if (!local && typeof window.carregarDaNuvem === 'function') {
       console.log("🔍 Buscando dados na nuvem...");
       
@@ -145,7 +133,6 @@ window.addEventListener('load', () => {
         }
       });
     } else if (local) {
-      // Tem dados locais, sincroniza com nuvem em background
       if (typeof window.salvarNaNuvem === 'function') {
         window.salvarNaNuvem(local);
       }
@@ -154,10 +141,9 @@ window.addEventListener('load', () => {
 });
 
 // ==========================================
-// AUTO-SAVE GLOBAL (CONSOLIDADO E MELHORADO)
+// AUTO-SAVE GLOBAL
 // ==========================================
 
-// Variáveis para controle do auto-save
 let ultimosDadosSalvos = null;
 let autoSaveAtivo = false;
 let configAutoSave = {
@@ -170,31 +156,26 @@ let configAutoSave = {
   debug: true
 };
 
-// Função para ativar o auto-save (chamar no início da aplicação)
-function ativarAutoSave(funcaoObterDados, opcoes = {}) {
+function ativarAutoSave(funcaoObterDados, opcoes) {
   if (autoSaveAtivo) {
     console.log("⏱️ Auto-save já está ativo");
-    return () => {};
+    return function() {};
   }
   
-  // Mescla configurações
+  opcoes = opcoes || {};
   Object.assign(configAutoSave, opcoes);
   
-  // Guarda referência global para acessar de qualquer lugar
   window.obterDadosSistema = funcaoObterDados;
   autoSaveAtivo = true;
   
   console.log("⏱️ Auto-save ativado!", configAutoSave);
   
-  // ==========================================
   // 1. AUTO-SAVE PERIÓDICO
-  // ==========================================
   const intervalo = setInterval(() => {
     if (typeof window.obterDadosSistema === 'function') {
       const dadosAtuais = window.obterDadosSistema();
       
       if (dadosAtuais) {
-        // Só salva se os dados mudaram
         const dadosString = JSON.stringify(dadosAtuais);
         if (dadosString !== ultimosDadosSalvos) {
           salvarDados(dadosAtuais);
@@ -208,10 +189,8 @@ function ativarAutoSave(funcaoObterDados, opcoes = {}) {
     }
   }, configAutoSave.intervalo);
   
-  // ==========================================
-  // 2. SALVAR AO FECHAR PÁGINA (beforeunload)
-  // ==========================================
-  const handleBeforeUnload = (e) => {
+  // 2. SALVAR AO FECHAR PÁGINA
+  const handleBeforeUnload = function(e) {
     if (!configAutoSave.salvarAoSair) return;
     
     if (typeof window.obterDadosSistema === 'function') {
@@ -222,7 +201,6 @@ function ativarAutoSave(funcaoObterDados, opcoes = {}) {
       }
     }
     
-    // Não mostra confirmação se já salvou
     if (ultimosDadosSalvos) {
       e.preventDefault();
       e.returnValue = '';
@@ -233,14 +211,11 @@ function ativarAutoSave(funcaoObterDados, opcoes = {}) {
     window.addEventListener('beforeunload', handleBeforeUnload);
   }
   
-  // ==========================================
-  // 3. SALVAR AO MUDAR DE ABA (visibilitychange)
-  // ==========================================
-  const handleVisibilityChange = () => {
+  // 3. SALVAR AO MUDAR DE ABA
+  const handleVisibilityChange = function() {
     if (!configAutoSave.salvarAoMudarAba) return;
     
     if (document.hidden) {
-      // Salvando ao sair da aba
       if (typeof window.obterDadosSistema === 'function') {
         const dadosAtuais = window.obterDadosSistema();
         if (dadosAtuais) {
@@ -263,10 +238,8 @@ function ativarAutoSave(funcaoObterDados, opcoes = {}) {
     document.addEventListener('visibilitychange', handleVisibilityChange);
   }
   
-  // ==========================================
-  // 4. SALVAR AO PERDER FOCO DA JANELA (blur)
-  // ==========================================
-  const handleBlur = () => {
+  // 4. SALVAR AO PERDER FOCO
+  const handleBlur = function() {
     if (!configAutoSave.salvarAoPerderFoco) return;
     
     if (typeof window.obterDadosSistema === 'function') {
@@ -286,10 +259,8 @@ function ativarAutoSave(funcaoObterDados, opcoes = {}) {
     window.addEventListener('blur', handleBlur);
   }
   
-  // ==========================================
-  // 5. DETECTAR CLIQUES EM BOTÕES DE SAIR/FECHAR
-  // ==========================================
-  const handleClickSair = (e) => {
+  // 5. DETECTAR CLIQUES EM BOTÕES DE SAIR
+  const handleClickSair = function(e) {
     if (!configAutoSave.salvarAoClicarSair) return;
     
     const target = e.target.closest('button, a');
@@ -298,7 +269,7 @@ function ativarAutoSave(funcaoObterDados, opcoes = {}) {
     const texto = target.textContent.toLowerCase();
     const acoesSaida = ['sair', 'fechar', 'logout', 'encerrar', 'voltar', 'cancelar'];
     
-    if (acoesSaida.some(acao => texto.includes(acao))) {
+    if (acoesSaida.some(function(acao) { return texto.indexOf(acao) !== -1; })) {
       if (typeof window.obterDadosSistema === 'function') {
         const dadosAtuais = window.obterDadosSistema();
         if (dadosAtuais) {
@@ -317,10 +288,8 @@ function ativarAutoSave(funcaoObterDados, opcoes = {}) {
     document.addEventListener('click', handleClickSair);
   }
   
-  // ==========================================
-  // 6. DETECTAR FORMULÁRIOS SENDO ENVIADOS
-  // ==========================================
-  const handleSubmit = () => {
+  // 6. DETECTAR FORMULÁRIOS
+  const handleSubmit = function() {
     if (!configAutoSave.salvarAoEnviarForm) return;
     
     if (typeof window.obterDadosSistema === 'function') {
@@ -340,10 +309,8 @@ function ativarAutoSave(funcaoObterDados, opcoes = {}) {
     document.addEventListener('submit', handleSubmit);
   }
   
-  // ==========================================
   // RETORNA FUNÇÃO PARA DESATIVAR
-  // ==========================================
-  return () => {
+  return function() {
     clearInterval(intervalo);
     
     if (configAutoSave.salvarAoSair) {
@@ -367,13 +334,11 @@ function ativarAutoSave(funcaoObterDados, opcoes = {}) {
   };
 }
 
-// Função para configurar opções do auto-save
 function configurarAutoSave(novasConfig) {
   Object.assign(configAutoSave, novasConfig);
   console.log("⚙️ Configurações do auto-save atualizadas:", configAutoSave);
 }
 
-// Função para forçar salvamento imediato
 function salvarAgora() {
   if (typeof window.obterDadosSistema === 'function') {
     const dadosAtuais = window.obterDadosSistema();
@@ -388,20 +353,19 @@ function salvarAgora() {
   return false;
 }
 
-// Status do auto-save
 function statusAutoSave() {
   return {
     ativo: autoSaveAtivo,
     ultimoSalvamento: ultimosDadosSalvos ? new Date().toISOString() : null,
-    configuracoes: { ...configAutoSave }
+    configuracoes: Object.assign({}, configAutoSave)
   };
 }
 
 // ==========================================
-// QUANDO VOLTAR ONLINE, SINCRONIZA
+// SINCRONIZAÇÃO ONLINE/OFFLINE
 // ==========================================
 
-window.addEventListener('online', () => {
+window.addEventListener('online', function() {
   console.log("🌐 Online! Sincronizando...");
   const dados = carregarLocal();
   if (dados && typeof window.salvarNaNuvem === 'function') {
@@ -409,15 +373,9 @@ window.addEventListener('online', () => {
   }
 });
 
-// ==========================================
-// DETECÇÃO DE MUDANÇAS NO LOCALSTORAGE (Sincronização entre abas)
-// ==========================================
-
-window.addEventListener('storage', (e) => {
+window.addEventListener('storage', function(e) {
   if (e.key === APP_KEY) {
     console.log("🔄 Dados atualizados em outra aba");
-    // Opcional: recarregar dados se necessário
-    // location.reload();
   }
 });
 
@@ -445,7 +403,9 @@ function salvarUsuario(usuario) {
 
 function login(nome, senha) {
   const dados = carregarDados();
-  const usuario = dados.usuarios?.find(u => u.nome === nome && u.senha === senha);
+  const usuario = dados.usuarios ? dados.usuarios.find(function(u) { 
+    return u.nome === nome && u.senha === senha; 
+  }) : null;
   
   if (usuario) {
     dados.logado = true;
@@ -520,21 +480,21 @@ function salvarProdutoEstoque(produto) {
   const dados = carregarDados();
   if (!dados.estoque) dados.estoque = [];
   
-  const produtoExistente = dados.estoque.find(p => p.id === produto.id);
+  const produtoExistente = dados.estoque.find(function(p) { 
+    return p.id === produto.id; 
+  });
   
   if (produtoExistente) {
-    // Atualiza produto existente
     Object.assign(produtoExistente, produto);
     produtoExistente.dataAtualizacao = new Date().toISOString();
     console.log("📦 Produto atualizado:", produto.nome);
   } else {
-    // Novo produto
     const novoProduto = {
       id: produto.id || Date.now(),
       nome: produto.nome,
       quantidade: produto.quantidade,
       preco: produto.preco,
-      tipo: produto.tipo, // 'gas' ou 'agua'
+      tipo: produto.tipo,
       dataCadastro: new Date().toISOString()
     };
     dados.estoque.push(novoProduto);
