@@ -1,5 +1,6 @@
 // ==========================================
-// STORAGE - LocalStorage + Firebase
+// STORAGE - LocalStorage + Firebase + Auto-Save
+// Versão consolidada e otimizada
 // ==========================================
 
 const APP_KEY = "gasaguapro";
@@ -153,39 +154,41 @@ window.addEventListener('load', () => {
 });
 
 // ==========================================
-// QUANDO VOLTAR ONLINE, SINCRONIZA
-// ==========================================
-
-window.addEventListener('online', () => {
-  console.log("🌐 Online! Sincronizando...");
-  const dados = carregarLocal();
-  if (dados && typeof window.salvarNaNuvem === 'function') {
-    window.salvarNaNuvem(dados);
-  }
-});
-
-// ==========================================
-// AUTO-SAVE GLOBAL (NOVO - ESSENCIAL!)
+// AUTO-SAVE GLOBAL (CONSOLIDADO E MELHORADO)
 // ==========================================
 
 // Variáveis para controle do auto-save
 let ultimosDadosSalvos = null;
 let autoSaveAtivo = false;
+let configAutoSave = {
+  intervalo: 3000,
+  salvarAoSair: true,
+  salvarAoMudarAba: true,
+  salvarAoPerderFoco: true,
+  salvarAoClicarSair: true,
+  salvarAoEnviarForm: true,
+  debug: true
+};
 
 // Função para ativar o auto-save (chamar no início da aplicação)
-function ativarAutoSave(funcaoObterDados, intervaloMs = 3000) {
+function ativarAutoSave(funcaoObterDados, opcoes = {}) {
   if (autoSaveAtivo) {
     console.log("⏱️ Auto-save já está ativo");
-    return;
+    return () => {};
   }
+  
+  // Mescla configurações
+  Object.assign(configAutoSave, opcoes);
   
   // Guarda referência global para acessar de qualquer lugar
   window.obterDadosSistema = funcaoObterDados;
   autoSaveAtivo = true;
   
-  console.log("⏱️ Auto-save ativado! (a cada " + intervaloMs + "ms)");
+  console.log("⏱️ Auto-save ativado!", configAutoSave);
   
-  // Auto-save periódico
+  // ==========================================
+  // 1. AUTO-SAVE PERIÓDICO
+  // ==========================================
   const intervalo = setInterval(() => {
     if (typeof window.obterDadosSistema === 'function') {
       const dadosAtuais = window.obterDadosSistema();
@@ -196,38 +199,178 @@ function ativarAutoSave(funcaoObterDados, intervaloMs = 3000) {
         if (dadosString !== ultimosDadosSalvos) {
           salvarDados(dadosAtuais);
           ultimosDadosSalvos = dadosString;
+          
+          if (configAutoSave.debug) {
+            console.log("💾 Auto-save executado:", new Date().toLocaleTimeString());
+          }
         }
       }
     }
-  }, intervaloMs);
+  }, configAutoSave.intervalo);
   
-  // Salvar ao sair da página (beforeunload)
-  window.addEventListener('beforeunload', () => {
+  // ==========================================
+  // 2. SALVAR AO FECHAR PÁGINA (beforeunload)
+  // ==========================================
+  const handleBeforeUnload = (e) => {
+    if (!configAutoSave.salvarAoSair) return;
+    
     if (typeof window.obterDadosSistema === 'function') {
-      const dadosAtuais = window.obterDadosSistema();
-      if (dadosAtuais) {
-        salvarDados(dadosAtuais);
-      }
-    }
-  });
-  
-  // Salvar quando a aba perde foco (visibilitychange)
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden && typeof window.obterDadosSistema === 'function') {
       const dadosAtuais = window.obterDadosSistema();
       if (dadosAtuais) {
         salvarDados(dadosAtuais);
         ultimosDadosSalvos = JSON.stringify(dadosAtuais);
       }
     }
-  });
+    
+    // Não mostra confirmação se já salvou
+    if (ultimosDadosSalvos) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  };
   
-  // Retorna função para desativar se necessário
+  if (configAutoSave.salvarAoSair) {
+    window.addEventListener('beforeunload', handleBeforeUnload);
+  }
+  
+  // ==========================================
+  // 3. SALVAR AO MUDAR DE ABA (visibilitychange)
+  // ==========================================
+  const handleVisibilityChange = () => {
+    if (!configAutoSave.salvarAoMudarAba) return;
+    
+    if (document.hidden) {
+      // Salvando ao sair da aba
+      if (typeof window.obterDadosSistema === 'function') {
+        const dadosAtuais = window.obterDadosSistema();
+        if (dadosAtuais) {
+          salvarDados(dadosAtuais);
+          ultimosDadosSalvos = JSON.stringify(dadosAtuais);
+          
+          if (configAutoSave.debug) {
+            console.log("👋 Salvando ao sair da aba...");
+          }
+        }
+      }
+    } else {
+      if (configAutoSave.debug) {
+        console.log("👀 Voltou para a aba");
+      }
+    }
+  };
+  
+  if (configAutoSave.salvarAoMudarAba) {
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+  }
+  
+  // ==========================================
+  // 4. SALVAR AO PERDER FOCO DA JANELA (blur)
+  // ==========================================
+  const handleBlur = () => {
+    if (!configAutoSave.salvarAoPerderFoco) return;
+    
+    if (typeof window.obterDadosSistema === 'function') {
+      const dadosAtuais = window.obterDadosSistema();
+      if (dadosAtuais) {
+        salvarDados(dadosAtuais);
+        ultimosDadosSalvos = JSON.stringify(dadosAtuais);
+        
+        if (configAutoSave.debug) {
+          console.log("👋 Salvando ao perder foco...");
+        }
+      }
+    }
+  };
+  
+  if (configAutoSave.salvarAoPerderFoco) {
+    window.addEventListener('blur', handleBlur);
+  }
+  
+  // ==========================================
+  // 5. DETECTAR CLIQUES EM BOTÕES DE SAIR/FECHAR
+  // ==========================================
+  const handleClickSair = (e) => {
+    if (!configAutoSave.salvarAoClicarSair) return;
+    
+    const target = e.target.closest('button, a');
+    if (!target) return;
+    
+    const texto = target.textContent.toLowerCase();
+    const acoesSaida = ['sair', 'fechar', 'logout', 'encerrar', 'voltar', 'cancelar'];
+    
+    if (acoesSaida.some(acao => texto.includes(acao))) {
+      if (typeof window.obterDadosSistema === 'function') {
+        const dadosAtuais = window.obterDadosSistema();
+        if (dadosAtuais) {
+          salvarDados(dadosAtuais);
+          ultimosDadosSalvos = JSON.stringify(dadosAtuais);
+          
+          if (configAutoSave.debug) {
+            console.log("🚪 Detectado clique em sair/fechar - salvando...");
+          }
+        }
+      }
+    }
+  };
+  
+  if (configAutoSave.salvarAoClicarSair) {
+    document.addEventListener('click', handleClickSair);
+  }
+  
+  // ==========================================
+  // 6. DETECTAR FORMULÁRIOS SENDO ENVIADOS
+  // ==========================================
+  const handleSubmit = () => {
+    if (!configAutoSave.salvarAoEnviarForm) return;
+    
+    if (typeof window.obterDadosSistema === 'function') {
+      const dadosAtuais = window.obterDadosSistema();
+      if (dadosAtuais) {
+        salvarDados(dadosAtuais);
+        ultimosDadosSalvos = JSON.stringify(dadosAtuais);
+        
+        if (configAutoSave.debug) {
+          console.log("📤 Formulário enviado - salvando...");
+        }
+      }
+    }
+  };
+  
+  if (configAutoSave.salvarAoEnviarForm) {
+    document.addEventListener('submit', handleSubmit);
+  }
+  
+  // ==========================================
+  // RETORNA FUNÇÃO PARA DESATIVAR
+  // ==========================================
   return () => {
     clearInterval(intervalo);
+    
+    if (configAutoSave.salvarAoSair) {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    }
+    if (configAutoSave.salvarAoMudarAba) {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }
+    if (configAutoSave.salvarAoPerderFoco) {
+      window.removeEventListener('blur', handleBlur);
+    }
+    if (configAutoSave.salvarAoClicarSair) {
+      document.removeEventListener('click', handleClickSair);
+    }
+    if (configAutoSave.salvarAoEnviarForm) {
+      document.removeEventListener('submit', handleSubmit);
+    }
+    
     autoSaveAtivo = false;
     console.log("⏹️ Auto-save desativado");
   };
+}
+
+// Função para configurar opções do auto-save
+function configurarAutoSave(novasConfig) {
+  Object.assign(configAutoSave, novasConfig);
+  console.log("⚙️ Configurações do auto-save atualizadas:", configAutoSave);
 }
 
 // Função para forçar salvamento imediato
@@ -244,6 +387,39 @@ function salvarAgora() {
   console.warn("⚠️ Não foi possível salvar - função obterDadosSistema não definida");
   return false;
 }
+
+// Status do auto-save
+function statusAutoSave() {
+  return {
+    ativo: autoSaveAtivo,
+    ultimoSalvamento: ultimosDadosSalvos ? new Date().toISOString() : null,
+    configuracoes: { ...configAutoSave }
+  };
+}
+
+// ==========================================
+// QUANDO VOLTAR ONLINE, SINCRONIZA
+// ==========================================
+
+window.addEventListener('online', () => {
+  console.log("🌐 Online! Sincronizando...");
+  const dados = carregarLocal();
+  if (dados && typeof window.salvarNaNuvem === 'function') {
+    window.salvarNaNuvem(dados);
+  }
+});
+
+// ==========================================
+// DETECÇÃO DE MUDANÇAS NO LOCALSTORAGE (Sincronização entre abas)
+// ==========================================
+
+window.addEventListener('storage', (e) => {
+  if (e.key === APP_KEY) {
+    console.log("🔄 Dados atualizados em outra aba");
+    // Opcional: recarregar dados se necessário
+    // location.reload();
+  }
+});
 
 // ==========================================
 // USUÁRIOS
@@ -376,7 +552,9 @@ function salvarProdutoEstoque(produto) {
 window.salvarDados = salvarDados;
 window.carregarDados = carregarDados;
 window.ativarAutoSave = ativarAutoSave;
+window.configurarAutoSave = configurarAutoSave;
 window.salvarAgora = salvarAgora;
+window.statusAutoSave = statusAutoSave;
 window.salvarUsuario = salvarUsuario;
 window.login = login;
 window.logout = logout;
@@ -385,3 +563,4 @@ window.salvarCliente = salvarCliente;
 window.salvarProdutoEstoque = salvarProdutoEstoque;
 
 console.log("💾 Storage carregado - Local + Firebase + Auto-Save ativos");
+console.log("📚 API disponível: ativarAutoSave(), salvarAgora(), configurarAutoSave(), statusAutoSave()");
