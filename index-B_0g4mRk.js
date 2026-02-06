@@ -1,5 +1,5 @@
 // ==========================================
-// INTEGRAÇÃO COM AUTO-SAVE (Adicionar no App principal)
+// INTEGRAÇÃO COM AUTO-SAVE (Versão atualizada)
 // ==========================================
 
 import { useEffect, useState } from 'react';
@@ -24,8 +24,16 @@ function App() {
   // ATIVA O AUTO-SAVE! (ESSENCIAL!)
   useEffect(() => {
     if (typeof window.ativarAutoSave === 'function') {
-      // Ativa auto-save passando função que retorna os dados atuais
-      const desativarAutoSave = window.ativarAutoSave(() => dadosSistema, 3000);
+      // Ativa auto-save com configurações personalizadas
+      const desativarAutoSave = window.ativarAutoSave(() => dadosSistema, {
+        intervalo: 3000,              // Salva a cada 3 segundos
+        salvarAoSair: true,           // Salva ao fechar página
+        salvarAoMudarAba: true,       // Salva ao trocar de aba
+        salvarAoPerderFoco: true,     // Salva ao perder foco da janela
+        salvarAoClicarSair: true,     // Salva ao clicar em botões de sair
+        salvarAoEnviarForm: true,     // Salva ao enviar formulários
+        debug: true                   // Mostra logs no console
+      });
       
       // Limpa ao desmontar
       return () => {
@@ -37,9 +45,7 @@ function App() {
   // Sempre que dados mudarem, atualiza o auto-save
   useEffect(() => {
     // Atualiza a referência global para o auto-save pegar dados atualizados
-    if (typeof window.obterDadosSistema === 'function') {
-      window.obterDadosSistema = () => dadosSistema;
-    }
+    window.obterDadosSistema = () => dadosSistema;
   }, [dadosSistema]);
 
   // ==========================================
@@ -101,8 +107,17 @@ function App() {
   // Forçar salvamento manual (útil para botão "Salvar")
   const salvarManualmente = () => {
     if (typeof window.salvarAgora === 'function') {
-      window.salvarAgora();
-      alert("💾 Dados salvos com sucesso!");
+      const sucesso = window.salvarAgora();
+      if (sucesso) {
+        alert("💾 Dados salvos com sucesso!");
+      }
+    }
+  };
+
+  // Ver status do auto-save (para debug)
+  const verStatusAutoSave = () => {
+    if (typeof window.statusAutoSave === 'function') {
+      console.log("Status do Auto-Save:", window.statusAutoSave());
     }
   };
 
@@ -113,6 +128,9 @@ function App() {
       {/* Seu JSX aqui */}
       <button onClick={salvarManualmente}>
         💾 Salvar Agora
+      </button>
+      <button onClick={verStatusAutoSave}>
+        ℹ️ Status Auto-Save (Debug)
       </button>
     </div>
   );
