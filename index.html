@@ -6,25 +6,25 @@
     <title>GasAgua Pro - Sistema de Gestão</title>
     
     <!-- PWA -->
-    <link rel="manifest" href="./manifest.json">
-    <link rel="apple-touch-icon" href="./icone-192.png">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icone-192.png">
     <meta name="theme-color" content="#2563eb">
     
     <!-- CSS -->
-    <link rel="stylesheet" crossorigin href="./index-BCooEiNa.css">
+    <link rel="stylesheet" crossorigin href="index-BCooEiNa.css">
     
-    <!-- Firebase SDK (carrega primeiro) -->
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     
-    <!-- Firebase Config (carrega depois do SDK) -->
-    <script src="./firebase-config.js"></script>
+    <!-- Firebase Config -->
+    <script src="firebase-config.js"></script>
     
     <!-- Service Worker -->
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function() {
-          navigator.serviceWorker.register('./sw.js')
+          navigator.serviceWorker.register('sw.js')
             .then(reg => console.log('✅ Service Worker registrado'))
             .catch(err => console.log('❌ SW erro:', err));
         });
@@ -35,9 +35,9 @@
   <body>
     <div id="root"></div>
     
-    <!-- Scripts do sistema (NA ORDEM CORRETA!) -->
-    <script src="./conexao.js"></script>
-    <script src="./storage.js"></script>
-    <script type="module" crossorigin src="./index-B_0g4mRk.js"></script>
+    <!-- Scripts do sistema -->
+    <script src="conexao.js"></script>
+    <script src="storage.js"></script>
+    <script type="module" crossorigin src="index-B_0g4mRk.js"></script>
   </body>
 </html>
