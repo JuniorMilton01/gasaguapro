@@ -1,8 +1,7 @@
-const CACHE_NAME = 'gasagua-v3-limpo'; // Nome novo para forçar atualização
+const CACHE_NAME = 'gasagua-v4-limpo';
 
-// NÃO cachear nada - modo pass-through
 self.addEventListener('install', function(event) {
-  console.log('Service Worker instalado (modo limpo)');
+  console.log('SW: Instalando versão limpa...');
   self.skipWaiting();
 });
 
@@ -11,19 +10,18 @@ self.addEventListener('activate', function(event) {
     caches.keys().then(function(cacheNames) {
       return Promise.all(
         cacheNames.map(function(cacheName) {
-          console.log('Deletando cache antigo:', cacheName);
           return caches.delete(cacheName);
         })
       );
     }).then(() => {
-      console.log('Todos os caches antigos deletados');
+      console.log('SW: Caches antigos limpos');
       return self.clients.claim();
     })
   );
 });
 
-// Não interceptar requisições - deixa passar tudo
+// Não intercepta nada - deixa passar direto
 self.addEventListener('fetch', function(event) {
-  // Não faz nada - deixa o navegador lidar com as requisições
+  // Pass-through total - não cacheia nada
   return;
 });
