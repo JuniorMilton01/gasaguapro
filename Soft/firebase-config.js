@@ -1,15 +1,18 @@
 // firebase-config.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { 
+  getFirestore, 
+  collection, 
+  addDoc, 
+  getDocs, 
+  deleteDoc, 
+  doc, 
+  query, 
+  where, 
+  Timestamp 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// SUBSTITUA ESTES DADOS PELOS SEUS DO PASSO 3
-const firebaseConfig = {
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
+// ✅ CONFIGURAÇÃO LIMPA - sem código dentro do objeto
 const firebaseConfig = {
   apiKey: "AIzaSyA5Jy8O1WvnJYzL1JMjWB_PUckR3J7nBNA",
   authDomain: "gasaguapro.firebaseapp.com",
@@ -20,15 +23,11 @@ const firebaseConfig = {
   appId: "1:1085068263719:web:ad3ff44b61a373a1952902"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-};
-
 // Inicializa o Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Função para salvar dados com data de expiração (6 meses)
+// ✅ FUNÇÃO PARA SALVAR DADOS (com expiração de 6 meses)
 export async function salvarDados(colecao, dados) {
   const dataExpiracao = new Date();
   dataExpiracao.setMonth(dataExpiracao.getMonth() + 6);
@@ -41,15 +40,15 @@ export async function salvarDados(colecao, dados) {
   
   try {
     const docRef = await addDoc(collection(db, colecao), dadosComExpiracao);
-    console.log("Documento salvo com ID:", docRef.id);
+    console.log("✅ Documento salvo com ID:", docRef.id);
     return docRef.id;
   } catch (e) {
-    console.error("Erro ao salvar:", e);
+    console.error("❌ Erro ao salvar:", e);
     throw e;
   }
 }
 
-// Função para buscar dados (apenas não expirados)
+// ✅ FUNÇÃO PARA BUSCAR DADOS (apenas não expirados)
 export async function buscarDados(colecao) {
   try {
     const agora = Timestamp.now();
@@ -63,14 +62,42 @@ export async function buscarDados(colecao) {
     querySnapshot.forEach((doc) => {
       dados.push({ id: doc.id, ...doc.data() });
     });
+    console.log(`✅ ${dados.length} documentos encontrados em ${colecao}`);
     return dados;
   } catch (e) {
-    console.error("Erro ao buscar:", e);
+    console.error("❌ Erro ao buscar:", e);
     throw e;
   }
 }
 
-// Função para excluir dados expirados (executar periodicamente)
+// ✅ FUNÇÃO PARA ATUALIZAR DADOS (importante para edições!)
+export async function atualizarDados(colecao, id, dados) {
+  try {
+    const { updateDoc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+    const docRef = doc(db, colecao, id);
+    await updateDoc(docRef, {
+      ...dados,
+      atualizadoEm: Timestamp.now()
+    });
+    console.log("✅ Documento atualizado:", id);
+  } catch (e) {
+    console.error("❌ Erro ao atualizar:", e);
+    throw e;
+  }
+}
+
+// ✅ FUNÇÃO PARA EXCLUIR DADOS
+export async function excluirDados(colecao, id) {
+  try {
+    await deleteDoc(doc(db, colecao, id));
+    console.log("✅ Documento excluído:", id);
+  } catch (e) {
+    console.error("❌ Erro ao excluir:", e);
+    throw e;
+  }
+}
+
+// ✅ FUNÇÃO PARA LIMPAR DADOS EXPIRADOS
 export async function limparDadosExpirados(colecao) {
   try {
     const agora = Timestamp.now();
@@ -87,10 +114,10 @@ export async function limparDadosExpirados(colecao) {
     });
     
     await Promise.all(promessasExclusao);
-    console.log(`${promessasExclusao.length} documentos expirados removidos`);
+    console.log(`🗑️ ${promessasExclusao.length} documentos expirados removidos de ${colecao}`);
   } catch (e) {
-    console.error("Erro ao limpar dados:", e);
+    console.error("❌ Erro ao limpar dados:", e);
   }
 }
 
-export { db };
+export { db, app };
